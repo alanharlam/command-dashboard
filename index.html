@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Dashboard</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --border-mid: #d0d0ce;
+    --text: #1a1a18;
+    --text-2: #555550;
+    --text-3: #999994;
+    --blue: #2563eb;
+    --purple: #7c3aed;
+    --amber: #d97706;
+    --gray: #6b7280;
+    --red-bg: #fef2f2;
+    --red-text: #991b1b;
+    --red-border: #fca5a5;
+    --yellow-bg: #fefce8;
+    --yellow-text: #854d0e;
+    --sky-bg: #f0f9ff;
+    --sky-text: #0c4a6e;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'SF Mono', 'Fira Code', monospace;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  /* Layout */
+  .shell { display: grid; grid-template-columns: 196px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 1.25rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+  .main { padding: 1.5rem 2rem; overflow-y: auto; }
+
+  /* Sidebar */
+  .logo { padding: 0 1.25rem 1.25rem; border-bottom: 1px solid var(--border); margin-bottom: .75rem; }
+  .logo h1 { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text); }
+  .logo p { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .nav-section { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding: .9rem 1.25rem .3rem; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 1.25rem; font-size: 13px; color: var(--text-2); cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: background .1s; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--bg); color: var(--text); font-weight: 500; }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .nav-count { margin-left: auto; font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1px 7px; color: var(--text-3); min-width: 24px; text-align: center; }
+  .sidebar-spacer { flex: 1; }
+  .signin-area { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+  .signin-btn { width: 100%; padding: 7px 12px; font-size: 12px; border: 1px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text-2); cursor: pointer; display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .signin-btn:hover { background: var(--bg); }
+  .user-info { font-size: 11px; color: var(--text-3); text-align: center; line-height: 1.5; }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; }
+  .toolbar h2 { font-size: 18px; font-weight: 500; flex: 1; }
+  .btn { padding: 6px 14px; font-size: 12px; border: 1px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font); white-space: nowrap; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--text); color: var(--surface); border-color: transparent; }
+  .btn.primary:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Status */
+  .status-bar { font-size: 11px; color: var(--text-3); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; min-height: 18px; }
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .spinner-sm { width: 12px; height: 12px; border: 1.5px solid var(--border-mid); border-top-color: var(--text-2); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-banner { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--red-text); margin-bottom: 1rem; line-height: 1.5; }
+
+  /* Section */
+  .section-wrap { margin-bottom: 1.5rem; }
+  .section-header { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); padding: .4rem 0; border-bottom: 1px solid var(--border); margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; }
+
+  /* Cards */
+  .item-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 7px; overflow: hidden; display: flex; transition: border-color .15s; }
+  .item-card:hover { border-color: var(--border-mid); }
+  .item-rail { width: 3px; flex-shrink: 0; }
+  .item-body { flex: 1; padding: 10px 13px; min-width: 0; }
+  .item-top { display: flex; align-items: flex-start; gap: 8px; }
+  .item-subject { font-size: 13px; font-weight: 500; flex: 1; line-height: 1.4; cursor: pointer; color: var(--text); }
+  .item-subject:hover { color: var(--blue); }
+  .urg-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+  .urg-overdue { background: var(--red-bg); color: var(--red-text); }
+  .urg-urgent { background: var(--yellow-bg); color: var(--yellow-text); }
+  .urg-soon { background: var(--sky-bg); color: var(--sky-text); }
+  .item-meta { font-size: 11px; color: var(--text-3); margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cat-pill { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; cursor: pointer; white-space: nowrap; border: 1px solid transparent; transition: opacity .1s; }
+  .cat-pill:hover { opacity: .7; }
+
+  /* Actions */
+  .item-actions { display: flex; gap: 5px; margin-top: 9px; flex-wrap: wrap; opacity: 0; transition: opacity .15s; }
+  .item-card:hover .item-actions { opacity: 1; }
+  .act-btn { padding: 3px 9px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text-2); cursor: pointer; font-family: var(--font); white-space: nowrap; }
+  .act-btn:hover { background: var(--bg); color: var(--text); border-color: var(--border-mid); }
+
+  /* Inline editors */
+  .inline-editor { display: none; margin-top: 8px; }
+  .inline-editor textarea { width: 100%; font-family: var(--mono); font-size: 11px; border: 1px solid var(--border-mid); border-radius: var(--radius); padding: 8px 10px; background: var(--bg); color: var(--text); resize: vertical; min-height: 80px; line-height: 1.7; }
+  .inline-editor.notes-ed textarea { font-family: var(--font); font-size: 12px; min-height: 55px; }
+  .editor-acts { display: flex; gap: 6px; margin-top: 5px; }
+
+  /* Log display */
+  .log-display { font-family: var(--mono); font-size: 11px; color: var(--text-2); background: var(--bg); border-radius: var(--radius); padding: 8px 10px; margin-top: 8px; line-height: 1.75; white-space: pre-wrap; cursor: pointer; border: 1px solid var(--border); }
+  .log-display:hover { border-color: var(--border-mid); }
+
+  /* Notes */
+  .notes-display { font-size: 12px; color: var(--text-2); background: var(--bg); border-radius: var(--radius); padding: 7px 10px; line-height: 1.6; border: 1px solid var(--border); cursor: pointer; white-space: pre-wrap; margin-top: 6px; }
+  .notes-display:hover { border-color: var(--border-mid); }
+  .notes-placeholder { font-size: 11px; color: var(--text-3); cursor: pointer; padding: 4px 0; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .notes-placeholder:hover { color: var(--text-2); }
+
+  /* Pickers */
+  .picker { display: none; background: var(--surface); border: 1px solid var(--border-mid); border-radius: var(--radius); padding: 10px; margin-top: 7px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .picker-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 7px; }
+  .snooze-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+  .snooze-opt { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 11px; text-align: center; color: var(--text-2); background: var(--bg); }
+  .snooze-opt:hover { border-color: var(--border-mid); color: var(--text); }
+  .custom-date { display: flex; gap: 5px; align-items: center; }
+  .custom-date input[type=date] { flex: 1; font-size: 11px; padding: 4px 8px; border: 1px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: var(--font); }
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .cat-opt { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 7px; }
+  .cat-opt:hover { background: var(--bg); border-color: var(--border-mid); }
+
+  /* Hidden count */
+  .hidden-banner { font-size: 11px; color: var(--text-3); text-align: center; padding: 6px; cursor: pointer; border: 1px dashed var(--border-mid); border-radius: var(--radius); margin-bottom: 8px; }
+  .hidden-banner:hover { color: var(--text-2); border-style: solid; }
+
+  /* Empty / loading */
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-3); font-size: 13px; line-height: 1.8; }
+  .loading-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--text-3); font-size: 13px; }
+  .big-spinner { width: 22px; height: 22px; border: 2px solid var(--border-mid); border-top-color: var(--text-2); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 1rem; }
+
+  /* Archive */
+  .archive-search { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .archive-search input { flex: 1; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-mid); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: var(--font); }
+  .archived-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 13px; margin-bottom: 6px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; opacity: .65; transition: opacity .15s; }
+  .archived-card:hover { opacity: 1; }
+  .archived-subj { font-size: 13px; font-weight: 500; color: var(--text); }
+  .archived-snippet { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .archived-notes { font-size: 11px; color: var(--text-2); margin-top: 3px; font-style: italic; }
+  .archived-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+  .archived-date { font-size: 10px; color: var(--text-3); white-space: nowrap; }
+
+  /* Progress */
+  .progress-wrap { margin-bottom: 1rem; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width .3s; }
+  .progress-label { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">
+      <h1>Command</h1>
+      <p id="last-refresh">Not connected</p>
+    </div>
+
+    <div class="nav-section">View</div>
+    <button class="nav-item active" id="nav-all" onclick="setView('all')">
+      <span style="font-size:14px">≡</span> All items
+      <span class="nav-count" id="count-all">—</span>
+    </button>
+    <button class="nav-item" id="nav-urgent" onclick="setView('urgent')">
+      <span style="font-size:14px">!</span> Urgent
+      <span class="nav-count" id="count-urgent">—</span>
+    </button>
+
+    <div class="nav-section">Categories</div>
+    <button class="nav-item" id="nav-followup" onclick="setView('followup')">
+      <span class="nav-dot" style="background:#2563eb"></span> Follow-ups
+      <span class="nav-count" id="count-followup">—</span>
+    </button>
+    <button class="nav-item" id="nav-logs" onclick="setView('logs')">
+      <span class="nav-dot" style="background:#7c3aed"></span> Recurring logs
+      <span class="nav-count" id="count-logs">—</span>
+    </button>
+    <button class="nav-item" id="nav-todos" onclick="setView('todos')">
+      <span class="nav-dot" style="background:#d97706"></span> To-do reminders
+      <span class="nav-count" id="count-todos">—</span>
+    </button>
+    <button class="nav-item" id="nav-reference" onclick="setView('reference')">
+      <span class="nav-dot" style="background:#6b7280"></span> Reference
+      <span class="nav-count" id="count-reference">—</span>
+    </button>
+
+    <div class="nav-section">Manage</div>
+    <button class="nav-item" onclick="syncGmail()" id="sync-btn">
+      <span style="font-size:14px">↻</span> Sync Gmail
+    </button>
+    <button class="nav-item" onclick="setView('hidden')" id="nav-hidden">
+      <span style="font-size:14px">◌</span> Hidden
+      <span class="nav-count" id="count-hidden"></span>
+    </button>
+    <button class="nav-item" onclick="setView('archive')" id="nav-archive">
+      <span style="font-size:14px">□</span> Archive
+      <span class="nav-count" id="count-archive"></span>
+    </button>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="signin-area" id="signin-area">
+      <div id="signin-status" class="user-info" style="margin-bottom:8px">Not signed in</div>
+      <button class="signin-btn" id="signin-btn" onclick="handleSignIn()">Sign in with Google</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="toolbar">
+      <h2 id="view-title">All items</h2>
+      <button class="btn primary" onclick="syncGmail()" id="sync-btn-main">↻ Sync Gmail</button>
+    </div>
+    <div class="status-bar" id="status-bar">Sign in with Google to get started.</div>
+    <div id="progress-area"></div>
+    <div id="error-area"></div>
+    <div id="items-area">
+      <div class="empty-state">Sign in with Google →<br>then click Sync Gmail to load your emails.</div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CLIENT_ID = '319445339245-uo0hbbedn480q253c7vftapjih5sm7v1.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.modify';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let accessToken = null;
+let allItems = [];
+let archivedItems = [];
+let hiddenItems = {}; // id -> ISO date string
+let currentView = 'all';
+
+const CAT = {
+  followup: { label: 'Follow-up',  color: '#2563eb', bg: '#eff6ff', tc: '#1e40af' },
+  logs:     { label: 'Log',        color: '#7c3aed', bg: '#f5f3ff', tc: '#4c1d95' },
+  todos:    { label: 'To-do',      color: '#d97706', bg: '#fffbeb', tc: '#92400e' },
+  reference:{ label: 'Reference',  color: '#6b7280', bg: '#f9fafb', tc: '#374151' }
+};
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem('cmd-items', JSON.stringify(allItems)); } catch(e){}
+  try { localStorage.setItem('cmd-archive', JSON.stringify(archivedItems)); } catch(e){}
+  try { localStorage.setItem('cmd-hidden', JSON.stringify(hiddenItems)); } catch(e){}
+}
+
+function load() {
+  try { const r = localStorage.getItem('cmd-items'); if(r) allItems = JSON.parse(r); } catch(e){}
+  try { const r = localStorage.getItem('cmd-archive'); if(r) archivedItems = JSON.parse(r); } catch(e){}
+  try { const r = localStorage.getItem('cmd-hidden'); if(r) hiddenItems = JSON.parse(r); } catch(e){}
+  if(allItems.length) { renderAll(); updateCounts(); setStatus('<span class="pulse"></span> Loaded from cache — click Sync Gmail to refresh'); }
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let tokenClient;
+
+function initGsi() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if(resp.error) { showError('Sign-in failed: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      fetchUserInfo();
+    }
+  });
+}
+
+function handleSignIn() {
+  if(!tokenClient) { showError('Google Sign-In not loaded yet. Please wait a moment and try again.'); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function fetchUserInfo() {
+  try {
+    const r = await gfetch('https://www.googleapis.com/oauth2/v2/userinfo');
+    document.getElementById('signin-status').textContent = r.email || 'Signed in';
+    document.getElementById('signin-btn').textContent = 'Switch account';
+    setStatus('<span class="pulse"></span> Signed in — click Sync Gmail to load your emails');
+  } catch(e) {}
+}
+
+// ─── GMAIL API ────────────────────────────────────────────────────────────────
+async function gfetch(url, opts={}) {
+  const resp = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json', ...(opts.headers||{}) }
+  });
+  if(!resp.ok) {
+    const txt = await resp.text();
+    throw new Error('Gmail API error ' + resp.status + ': ' + txt.substring(0,200));
+  }
+  return resp.json();
+}
+
+async function searchThreads(query, maxResults=50) {
+  const data = await gfetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
+  return data.threads || [];
+}
+
+async function getThread(id) {
+  return gfetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`);
+}
+
+async function snoozeThread(threadId, until) {
+  // Gmail snooze via label — apply SNOOZED label and set unsnooze date
+  // For simplicity we just track locally; Gmail's native snooze isn't in the API
+  // We can remove it from inbox by archiving (remove INBOX label)
+}
+
+async function gmailArchive(threadId) {
+  if(!threadId) return;
+  try {
+    await gfetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`, {
+      method: 'POST',
+      body: JSON.stringify({ removeLabelIds: ['INBOX', 'SNOOZED'] })
+    });
+  } catch(e) { console.warn('Could not archive thread in Gmail:', e.message); }
+}
+
+// ─── SYNC ─────────────────────────────────────────────────────────────────────
+async function syncGmail() {
+  if(!accessToken) { showError('Please sign in with Google first.'); return; }
+  document.getElementById('items-area').innerHTML = '<div class="loading-card"><div class="big-spinner"></div>Fetching your emails from Gmail…</div>';
+  document.getElementById('error-area').innerHTML = '';
+  setProgress(0, 'Starting sync…');
+
+  try {
+    setProgress(10, 'Searching snoozed emails…');
+    const snoozedThreads = await searchThreads('in:snoozed', 50);
+
+    setProgress(30, 'Searching sent emails…');
+    const sentThreads = await searchThreads('in:sent newer_than:30d', 30);
+
+    // Deduplicate
+    const seen = new Set();
+    const allThreads = [];
+    [...snoozedThreads, ...sentThreads].forEach(t => { if(!seen.has(t.id)){seen.add(t.id);allThreads.push(t);} });
+
+    setProgress(50, `Loading ${allThreads.length} threads…`);
+
+    // Fetch thread details in batches
+    const details = [];
+    const batchSize = 5;
+    for(let i=0; i<allThreads.length; i+=batchSize) {
+      const batch = allThreads.slice(i, i+batchSize);
+      const results = await Promise.allSettled(batch.map(t => getThread(t.id)));
+      results.forEach((r,idx) => {
+        if(r.status==='fulfilled') details.push({thread: r.value, snippet: allThreads[i+idx].snippet||''});
+      });
+      setProgress(50 + Math.round((i/allThreads.length)*35), `Loading thread ${Math.min(i+batchSize, allThreads.length)} of ${allThreads.length}…`);
+    }
+
+    setProgress(88, 'Categorizing…');
+
+    // Build items from thread details
+    const existing = {};
+    allItems.forEach(it => { existing[it.threadId] = { notes: it.notes||'', logContent: it.logContent||'' }; });
+
+    const newItems = details.map(({thread, snippet}) => {
+      const msg = thread.messages?.[thread.messages.length-1];
+      const hdrs = msg?.payload?.headers || [];
+      const get = name => hdrs.find(h=>h.name.toLowerCase()===name.toLowerCase())?.value || '';
+      const subject = get('Subject') || '(no subject)';
+      const from = get('From');
+      const to = get('To');
+      const date = get('Date');
+      const labels = msg?.labelIds || [];
+      const isSnoozed = labels.includes('SNOOZED');
+      const isSent = labels.includes('SENT') && !isSnoozed;
+
+      const ex = existing[thread.id] || {};
+      const item = categorize({ id: thread.id, threadId: thread.id, subject, snippet, from, to, date, labels, isSnoozed, isSent });
+      item.notes = ex.notes || '';
+      item.logContent = ex.logContent || item.logContent || '';
+      return item;
+    });
+
+    allItems = newItems;
+    save();
+    setProgress(100, 'Done');
+    clearProgress();
+    renderAll();
+    updateCounts();
+    const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('last-refresh').textContent = now;
+    setStatus(`<span class="pulse"></span> ${allItems.length} items synced — ${now}`);
+  } catch(e) {
+    showError(e.message);
+    clearProgress();
+    document.getElementById('items-area').innerHTML = '';
+    renderAll();
+  }
+}
+
+// ─── CATEGORIZATION ───────────────────────────────────────────────────────────
+function categorize(raw) {
+  const subj = (raw.subject||'').toLowerCase();
+  const from = (raw.from||'').toLowerCase();
+  const snip = (raw.snippet||'').toLowerCase();
+  const combined = subj + ' ' + snip;
+
+  // Detect self-email (log)
+  const isSelfEmail = raw.labels?.includes('SENT') || from.includes('harlam') || from.includes('gmail.com');
+
+  // Category detection
+  let category = 'todos';
+  let isLog = false;
+
+  const logKeywords = ['propane','maintenance','hvac','septic','cholesterol','checkup','pacemaker','log','track','level','reading','service','oil','filter','pump','dental','prescription','refill','autoship','petco','blood','pressure','weight','mileage','inspection'];
+  const followupKeywords = ['follow','ping','waiting','response','reply','sent','reach out','check in','confirm','reminder','proposal','invoice','offer','contract','introduce','referral'];
+  const referenceKeywords = ['ticket','reservation','booking','itinerary','flight','hotel','confirmation','receipt','policy','renewal','expir','medicare','insurance','passport','license','estate','will','trust','social security','enrollment'];
+
+  if(logKeywords.some(k=>combined.includes(k)) && isSelfEmail) {
+    category = 'logs'; isLog = true;
+  } else if(referenceKeywords.some(k=>combined.includes(k))) {
+    category = 'reference';
+  } else if(followupKeywords.some(k=>combined.includes(k)) || raw.isSent) {
+    category = 'followup';
+  } else {
+    category = 'todos';
+  }
+
+  // Urgency
+  const today = new Date();
+  let urgency = 'normal';
+  let urgencyNote = '';
+
+  // Look for dates in subject/snippet
+  const datePatterns = [
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2}/gi,
+    /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g,
+    /due\s+([\w\s]+)/i,
+    /by\s+([\w\s,]+\d{4})/i
+  ];
+
+  const urgentWords = ['urgent','asap','immediately','today','tomorrow','this week','deadline','due','overdue','expir','renew','action required'];
+  const soonWords = ['soon','upcoming','next week','next month','scheduled','appointment','meeting'];
+
+  if(urgentWords.some(k=>combined.includes(k))) {
+    urgency = 'urgent';
+    urgencyNote = 'Contains urgent language';
+  } else if(soonWords.some(k=>combined.includes(k))) {
+    urgency = 'soon';
+    urgencyNote = 'Coming up soon';
+  }
+
+  // Date from raw
+  let lastDate = '';
+  if(raw.date) {
+    try { lastDate = new Date(raw.date).toISOString().split('T')[0]; } catch(e){}
+  }
+
+  // Contacts
+  const contacts = [];
+  const contact = raw.isSent ? (raw.to||'').split(',')[0].trim() : (raw.from||'').split('<')[0].trim();
+  if(contact && !contact.toLowerCase().includes('harlam')) contacts.push(contact);
+
+  return {
+    id: raw.threadId,
+    threadId: raw.threadId,
+    subject: raw.subject,
+    snippet: raw.snippet,
+    category,
+    isLog,
+    urgency,
+    urgencyNote,
+    contacts,
+    lastDate,
+    logContent: '',
+    notes: ''
+  };
+}
+
+// ─── VIEWS ────────────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const el = document.getElementById('nav-'+v);
+  if(el) el.classList.add('active');
+  const titles = {all:'All items',urgent:'Urgent & overdue',followup:'Follow-ups',logs:'Recurring logs',todos:'To-do reminders',reference:'Reference',hidden:'Hidden items',archive:'Archive'};
+  document.getElementById('view-title').textContent = titles[v]||v;
+  renderAll();
+}
+
+function isHidden(item) {
+  if(!hiddenItems[item.id]) return false;
+  return new Date(hiddenItems[item.id]) > new Date();
+}
+
+function getVisible(cat) {
+  let items = allItems.filter(i=>!isHidden(i));
+  if(cat==='urgent') items = items.filter(i=>i.urgency==='overdue'||i.urgency==='urgent');
+  else if(cat!=='all') items = items.filter(i=>i.category===cat);
+  const order = {overdue:0,urgent:1,soon:2,normal:3};
+  return items.sort((a,b)=>(order[a.urgency]||3)-(order[b.urgency]||3));
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  const area = document.getElementById('items-area');
+
+  if(currentView==='archive') { renderArchive(area); return; }
+
+  if(currentView==='hidden') {
+    area.innerHTML='';
+    const h=allItems.filter(i=>isHidden(i));
+    if(!h.length){area.innerHTML='<div class="empty-state">No hidden items.</div>';return;}
+    h.forEach(item=>area.appendChild(makeCard(item,true)));
+    return;
+  }
+
+  if(!allItems.length) {
+    area.innerHTML='<div class="empty-state">No items yet.<br>Click Sync Gmail to load your emails.</div>';
+    return;
+  }
+
+  if(currentView==='all') {
+    area.innerHTML='';
+    ['followup','logs','todos','reference'].forEach(cat=>{
+      const items=getVisible(cat);
+      const hiddenCat=allItems.filter(i=>isHidden(i)&&i.category===cat);
+      if(!items.length&&!hiddenCat.length) return;
+      const sec=document.createElement('div');
+      sec.className='section-wrap';
+      const m=CAT[cat];
+      const hdr=document.createElement('div');
+      hdr.className='section-header';
+      hdr.innerHTML=`<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${m.color};display:inline-block"></span>${cat==='logs'?'Recurring logs':m.label+'s'}</span><span>${items.length}</span>`;
+      sec.appendChild(hdr);
+      if(hiddenCat.length){
+        const hb=document.createElement('div');
+        hb.className='hidden-banner';
+        hb.textContent=hiddenCat.length+' item'+(hiddenCat.length>1?'s':'')+' hidden — click to reveal';
+        hb.onclick=()=>{hiddenCat.forEach(i=>delete hiddenItems[i.id]);save();renderAll();updateCounts();};
+        sec.appendChild(hb);
+      }
+      items.forEach(item=>sec.appendChild(makeCard(item)));
+      area.appendChild(sec);
+    });
+    return;
+  }
+
+  area.innerHTML='';
+  const items=getVisible(currentView);
+  if(!items.length){area.innerHTML='<div class="empty-state">Nothing here.</div>';return;}
+  items.forEach(item=>area.appendChild(makeCard(item)));
+}
+
+function renderArchive(area) {
+  area.innerHTML=`<div class="archive-search"><input type="text" id="archive-q" placeholder="Search archived items…" oninput="filterArchive()"></div><div id="archive-list"></div>`;
+  filterArchive();
+}
+
+function filterArchive() {
+  const q=(document.getElementById('archive-q')?.value||'').toLowerCase();
+  const list=document.getElementById('archive-list');
+  if(!list) return;
+  const filtered=archivedItems.filter(i=>!q||[i.subject,i.snippet,i.notes].join(' ').toLowerCase().includes(q));
+  if(!filtered.length){list.innerHTML='<div class="empty-state">'+(q?'No matches.':'Archive is empty.')+'</div>';return;}
+  list.innerHTML='';
+  [...filtered].reverse().forEach(item=>{
+    const m=CAT[item.category]||CAT.reference;
+    const card=document.createElement('div');
+    card.className='archived-card';
+    card.innerHTML=`
+      <div style="flex:1;min-width:0">
+        <div class="archived-subj">${esc(item.subject)}</div>
+        ${item.snippet?`<div class="archived-snippet">${esc(item.snippet)}</div>`:''}
+        ${item.notes?`<div class="archived-notes">${esc(item.notes)}</div>`:''}
+      </div>
+      <div class="archived-right">
+        <span class="archived-date">${item.archivedDate||''}</span>
+        <span class="cat-pill" style="background:${m.bg};color:${m.tc};border-color:${m.color}44">${m.label}</span>
+        <button class="act-btn" onclick="unarchive('${item.id}')">↩ Restore</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function makeCard(item, isHiddenView=false) {
+  const card=document.createElement('div');
+  card.className='item-card';
+  card.id='card-'+item.id;
+  const m=CAT[item.category]||CAT.reference;
+
+  const rail=document.createElement('div');
+  rail.className='item-rail';
+  rail.style.background=m.color;
+  card.appendChild(rail);
+
+  const body=document.createElement('div');
+  body.className='item-body';
+
+  // Top row
+  const top=document.createElement('div');
+  top.className='item-top';
+  const subj=document.createElement('div');
+  subj.className='item-subject';
+  subj.textContent=item.subject;
+  subj.onclick=()=>window.open('https://mail.google.com/mail/u/0/#all/'+item.threadId,'_blank');
+  top.appendChild(subj);
+  if(item.urgency&&item.urgency!=='normal'){
+    const b=document.createElement('span');
+    b.className='urg-badge urg-'+item.urgency;
+    b.textContent=item.urgency;
+    if(item.urgencyNote) b.title=item.urgencyNote;
+    top.appendChild(b);
+  }
+  body.appendChild(top);
+
+  // Meta row
+  const meta=document.createElement('div');
+  meta.className='item-meta';
+  const pill=document.createElement('span');
+  pill.className='cat-pill';
+  pill.style.cssText=`background:${m.bg};color:${m.tc};border-color:${m.color}44`;
+  pill.textContent=m.label;
+  pill.title='Click to change category';
+  pill.onclick=(e)=>{e.stopPropagation();closeAllPickers();togglePicker('catpick-'+item.id);};
+  meta.appendChild(pill);
+  if(item.urgencyNote){const s=document.createElement('span');s.textContent=item.urgencyNote;meta.appendChild(s);}
+  if(item.contacts&&item.contacts[0]){const s=document.createElement('span');s.textContent=item.contacts[0];meta.appendChild(s);}
+  if(item.lastDate){const s=document.createElement('span');s.textContent=item.lastDate;meta.appendChild(s);}
+  body.appendChild(meta);
+
+  // Category picker
+  const catPick=document.createElement('div');
+  catPick.className='picker';
+  catPick.id='catpick-'+item.id;
+  catPick.innerHTML=`<div class="picker-label">Move to category</div><div class="cat-grid">${Object.entries(CAT).map(([k,c])=>`<div class="cat-opt" onclick="recat('${item.id}','${k}')"><span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${k==='logs'?'Recurring log':c.label}</div>`).join('')}</div>`;
+  body.appendChild(catPick);
+
+  // Log display
+  if(item.isLog||item.category==='logs') {
+    const logD=document.createElement('div');
+    logD.className='log-display';
+    logD.id='logd-'+item.id;
+    logD.textContent=item.logContent||'(no entries yet — click to add)';
+    logD.onclick=()=>toggleEditor('log',item.id);
+    body.appendChild(logD);
+    const logE=document.createElement('div');
+    logE.className='inline-editor';
+    logE.id='loge-'+item.id;
+    logE.innerHTML=`<textarea id="lota-${item.id}">${esc(item.logContent||'')}</textarea><div class="editor-acts"><button class="act-btn" onclick="saveLog('${item.id}')">✓ Save</button><button class="act-btn" onclick="toggleEditor('log','${item.id}')">Cancel</button></div>`;
+    body.appendChild(logE);
+  }
+
+  // Notes
+  const notesWrap=document.createElement('div');
+  notesWrap.id='notesw-'+item.id;
+  if(item.notes) {
+    const nd=document.createElement('div');
+    nd.className='notes-display';
+    nd.id='notesd-'+item.id;
+    nd.textContent=item.notes;
+    nd.onclick=()=>toggleEditor('notes',item.id);
+    notesWrap.appendChild(nd);
+  } else {
+    const np=document.createElement('div');
+    np.className='notes-placeholder';
+    np.id='notesd-'+item.id;
+    np.innerHTML='+ Add a note';
+    np.onclick=()=>toggleEditor('notes',item.id);
+    notesWrap.appendChild(np);
+  }
+  const notesE=document.createElement('div');
+  notesE.className='inline-editor notes-ed';
+  notesE.id='notese-'+item.id;
+  notesE.innerHTML=`<textarea id="nota-${item.id}" placeholder="Context, next steps, anything useful…">${esc(item.notes||'')}</textarea><div class="editor-acts"><button class="act-btn" onclick="saveNotes('${item.id}')">✓ Save</button><button class="act-btn" onclick="toggleEditor('notes','${item.id}')">Cancel</button></div>`;
+  notesWrap.appendChild(notesE);
+  body.appendChild(notesWrap);
+
+  // Actions
+  const acts=document.createElement('div');
+  acts.className='item-actions';
+  if(isHiddenView) {
+    acts.innerHTML=`<button class="act-btn" onclick="unhide('${item.id}')">↑ Show now</button>`;
+  } else {
+    acts.innerHTML=`
+      <button class="act-btn" onclick="window.open('https://mail.google.com/mail/u/0/#all/${item.threadId}','_blank')">↗ Open in Gmail</button>
+      <button class="act-btn" onclick="closeAllPickers();togglePicker('snoozep-${item.id}')">◷ Hide until…</button>
+      <button class="act-btn" onclick="archiveItem('${item.id}')">□ Archive</button>`;
+  }
+  body.appendChild(acts);
+
+  // Snooze picker
+  const snoozeP=document.createElement('div');
+  snoozeP.className='picker';
+  snoozeP.id='snoozep-'+item.id;
+  const t=fd(addDays(1)),d3=fd(addDays(3)),w1=fd(addDays(7)),w2=fd(addDays(14)),m1=fd(addDays(30)),m3=fd(addDays(90));
+  snoozeP.innerHTML=`
+    <div class="picker-label">Hide until…</div>
+    <div class="snooze-grid">
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${t}')">Tomorrow</div>
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${d3}')">3 days</div>
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${w1}')">1 week</div>
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${w2}')">2 weeks</div>
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${m1}')">1 month</div>
+      <div class="snooze-opt" onclick="hideUntil('${item.id}','${m3}')">3 months</div>
+    </div>
+    <div class="custom-date">
+      <input type="date" id="dp-${item.id}" value="${w1}">
+      <button class="act-btn" onclick="hideUntilCustom('${item.id}')">Set date</button>
+    </div>`;
+  body.appendChild(snoozeP);
+
+  card.appendChild(body);
+  return card;
+}
+
+// ─── INTERACTIONS ─────────────────────────────────────────────────────────────
+function togglePicker(id) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  const showing=el.style.display==='block';
+  el.style.display=showing?'none':'block';
+}
+
+function closeAllPickers() {
+  document.querySelectorAll('.picker').forEach(el=>el.style.display='none');
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.picker')&&!e.target.closest('.cat-pill')&&!e.target.closest('.act-btn')) closeAllPickers();
+});
+
+function toggleEditor(type, id) {
+  const edId = type==='log' ? 'loge-'+id : 'notese-'+id;
+  const dispId = type==='log' ? 'logd-'+id : 'notesd-'+id;
+  const ed=document.getElementById(edId);
+  const disp=document.getElementById(dispId);
+  if(!ed) return;
+  const showing=ed.style.display==='block';
+  ed.style.display=showing?'none':'block';
+  if(disp) disp.style.display=showing?'':'none';
+  if(!showing) { const ta=ed.querySelector('textarea'); if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);} }
+}
+
+function saveLog(id) {
+  const ta=document.getElementById('lota-'+id);
+  const item=allItems.find(i=>i.id===id);
+  if(!ta||!item) return;
+  item.logContent=ta.value;
+  item.isLog=true;
+  item.category='logs';
+  const d=document.getElementById('logd-'+id);
+  if(d) d.textContent=ta.value||'(no entries yet — click to add)';
+  toggleEditor('log',id);
+  save();
+}
+
+function saveNotes(id) {
+  const ta=document.getElementById('nota-'+id);
+  const item=allItems.find(i=>i.id===id);
+  if(!ta||!item) return;
+  item.notes=ta.value;
+  const d=document.getElementById('notesd-'+id);
+  if(d){
+    if(ta.value){d.className='notes-display';d.textContent=ta.value;}
+    else{d.className='notes-placeholder';d.innerHTML='+ Add a note';}
+  }
+  toggleEditor('notes',id);
+  save();
+}
+
+function recat(id, newCat) {
+  const item=allItems.find(i=>i.id===id);
+  if(!item) return;
+  item.category=newCat;
+  item.isLog=(newCat==='logs');
+  closeAllPickers();
+  save();
+  renderAll(); updateCounts();
+}
+
+function hideUntil(id, date) { hiddenItems[id]=date; save(); renderAll(); updateCounts(); }
+function hideUntilCustom(id) { const v=document.getElementById('dp-'+id)?.value; if(v) hideUntil(id,v); }
+function unhide(id) { delete hiddenItems[id]; save(); renderAll(); updateCounts(); }
+
+function archiveItem(id) {
+  const item=allItems.find(i=>i.id===id);
+  if(!item) return;
+  archivedItems.push({...item, archivedDate:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})});
+  allItems=allItems.filter(i=>i.id!==id);
+  delete hiddenItems[id];
+  gmailArchive(item.threadId);
+  save(); renderAll(); updateCounts();
+}
+
+function unarchive(id) {
+  const item=archivedItems.find(i=>i.id===id);
+  if(!item) return;
+  const {archivedDate,...rest}=item;
+  allItems.push(rest);
+  archivedItems=archivedItems.filter(i=>i.id!==id);
+  save(); renderAll(); updateCounts();
+  setView('all');
+}
+
+// ─── COUNTS ───────────────────────────────────────────────────────────────────
+function updateCounts() {
+  ['followup','logs','todos','reference'].forEach(cat=>{
+    const el=document.getElementById('count-'+cat);
+    if(el) el.textContent=getVisible(cat).length;
+  });
+  const allEl=document.getElementById('count-all');
+  if(allEl) allEl.textContent=allItems.filter(i=>!isHidden(i)).length;
+  const urgEl=document.getElementById('count-urgent');
+  if(urgEl) urgEl.textContent=getVisible('urgent').length||'';
+  const hEl=document.getElementById('count-hidden');
+  if(hEl) hEl.textContent=allItems.filter(i=>isHidden(i)).length||'';
+  const aEl=document.getElementById('count-archive');
+  if(aEl) aEl.textContent=archivedItems.length||'';
+}
+
+// ─── PROGRESS / STATUS ────────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  document.getElementById('progress-area').innerHTML=`<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${label}</div></div>`;
+}
+function clearProgress() { document.getElementById('progress-area').innerHTML=''; }
+function setStatus(html) { document.getElementById('status-bar').innerHTML=html; }
+function showError(msg) { document.getElementById('error-area').innerHTML=`<div class="error-banner">${esc(msg)}</div>`; }
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d;}
+function fd(d){return d.toISOString().split('T')[0];}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  load();
+  // Wait for GSI to load
+  const waitGsi = setInterval(()=>{
+    if(window.google?.accounts?.oauth2) { clearInterval(waitGsi); initGsi(); }
+  }, 200);
+});
+</script>
+</body>
+</html>
