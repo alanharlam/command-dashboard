@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Free / Busy Report</title>
+<title>Vacation Planning</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -37,7 +37,6 @@
     line-height: 1.5;
   }
 
-  /* ── Header ── */
   .header {
     background: var(--surface);
     border-bottom: 0.5px solid var(--border-med);
@@ -70,7 +69,6 @@
   .btn-primary:hover { opacity: 0.88; background: var(--text); }
   .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-  /* ── Auth screen ── */
   #auth-screen {
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -91,7 +89,6 @@
   .scope-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
   .auth-note { font-size: 11px; color: var(--text-3); margin-top: 16px; }
 
-  /* ── Config bar ── */
   #config-bar {
     display: none;
     background: var(--surface);
@@ -102,22 +99,10 @@
     flex-wrap: wrap;
   }
   .config-label { font-size: 12px; color: var(--text-2); font-weight: 500; white-space: nowrap; }
-  .cal-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 12px; border: 0.5px solid var(--border-med);
-    background: var(--surface); cursor: pointer;
-    transition: background 0.1s;
-  }
-  .cal-chip.active { background: var(--text); color: #fff; border-color: var(--text); }
-  .cal-chip:not(.active):hover { background: var(--bg); }
-  .cal-chip .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
   .config-sep { flex: 1; }
 
-  /* ── Main ── */
   #main { display: none; padding: 28px 32px; max-width: 960px; margin: 0 auto; }
 
-  /* ── Legend ── */
   .legend {
     display: flex; flex-wrap: wrap; gap: 8px 16px;
     margin-bottom: 24px; align-items: center;
@@ -129,23 +114,40 @@
   .badge-inperson { background: var(--green-bg); color: var(--green-text); }
   .badge-remote { background: var(--blue-bg); color: var(--blue-text); }
 
-  /* ── Calendar ── */
   .year-heading {
     font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text-3);
-    margin: 32px 0 16px; padding-bottom: 8px;
+    margin: 32px 0 0; padding-bottom: 10px;
     border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
   }
-  .year-heading:first-child { margin-top: 0; }
+  .year-heading-left { display: flex; align-items: center; gap: 8px; }
+  .year-toggle-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 3px;
+    background: var(--border); color: var(--text-2);
+    font-size: 10px; font-style: normal; transition: background 0.1s;
+    flex-shrink: 0;
+  }
+  .year-heading:hover .year-toggle-icon { background: var(--border-med); }
+  .year-event-count { font-size: 10px; color: var(--text-3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+  .year-months-wrap {
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    max-height: 2000px;
+    opacity: 1;
+  }
+  .year-months-wrap.collapsed { max-height: 0; opacity: 0; }
 
   .months-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 20px;
-    margin-bottom: 8px;
+    margin: 16px 0 8px;
   }
 
-  .month-block { }
   .month-label {
     font-size: 12px; font-weight: 600; color: var(--text-2);
     text-transform: uppercase; letter-spacing: 0.05em;
@@ -157,7 +159,6 @@
     gap: 2px; margin-bottom: 3px;
   }
   .day-name { font-size: 10px; color: var(--text-3); text-align: center; }
-
   .week-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 2px; }
 
   .day-cell {
@@ -183,15 +184,13 @@
   }
   .event-bar { height: 5px; border-radius: 2px; width: 100%; opacity: 0.9; }
 
-  /* ── Tooltip ── */
   .tooltip {
     position: fixed;
     background: var(--surface);
     border: 0.5px solid var(--border-med);
     border-radius: var(--radius);
     padding: 10px 13px;
-    max-width: 270px;
-    min-width: 200px;
+    max-width: 270px; min-width: 200px;
     pointer-events: none;
     z-index: 9999;
     display: none;
@@ -205,7 +204,6 @@
   .tt-name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; }
   .tt-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 
-  /* ── Loading / status ── */
   #status-screen {
     display: none; flex-direction: column; align-items: center;
     justify-content: center; min-height: calc(100vh - 100px);
@@ -225,13 +223,11 @@
   }
   .error-card strong { display: block; margin-bottom: 4px; font-weight: 500; }
 
-  /* ── Empty state ── */
-  .empty-month { font-size: 11px; color: var(--text-3); padding: 6px 0; }
-
   @media print {
     .header, #config-bar { display: none !important; }
     body { background: white; }
     .tooltip { display: none !important; }
+    .year-months-wrap.collapsed { max-height: none !important; opacity: 1 !important; }
   }
 
   @media (max-width: 600px) {
@@ -244,10 +240,9 @@
 </head>
 <body>
 
-<!-- Header -->
 <header class="header">
   <div class="header-left">
-    <div class="logo">Free / Busy <span>Report</span></div>
+    <div class="logo">Vacation <span>Planning</span></div>
     <div class="period-label" id="period-label">—</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;">
@@ -267,12 +262,11 @@
   </div>
 </header>
 
-<!-- Auth screen -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-icon">📅</div>
-    <h1 class="auth-title">Free / Busy Report</h1>
-    <p class="auth-sub">Sign in to generate a visual calendar showing your Vacation Travel events and Bari's board commitments — automatically covering the rest of this year plus all of next year.</p>
+    <div class="auth-icon">✈️</div>
+    <h1 class="auth-title">Vacation Planning</h1>
+    <p class="auth-sub">Sign in to view a visual calendar of your Vacation Travel events and Bari's board commitments — covering history back to 2020 plus all of next year.</p>
     <div class="scopes-list">
       <p>Permissions requested</p>
       <div class="scope-item"><div class="scope-dot"></div>Read-only access to Google Calendar</div>
@@ -287,21 +281,18 @@
   </div>
 </div>
 
-<!-- Status / loading -->
 <div id="status-screen">
   <div class="spinner"></div>
   <div id="status-msg">Loading…</div>
 </div>
 
-<!-- Config bar -->
 <div id="config-bar">
   <span class="config-label">Calendars:</span>
   <div id="cal-chips"></div>
   <div class="config-sep"></div>
-  <button class="btn btn-primary" onclick="runReport()" style="font-size:12px;padding:6px 14px;">Generate report</button>
+  <button class="btn btn-primary" onclick="runReport()" style="font-size:12px;padding:6px 14px;">Refresh</button>
 </div>
 
-<!-- Main report -->
 <div id="main">
   <div class="legend">
     <div class="legend-item"><div class="legend-dot" style="background:#378ADD"></div>Vacation / Travel</div>
@@ -319,36 +310,29 @@
 
 <div class="tooltip" id="tt"></div>
 
-<!-- Google API -->
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
-
 <script>
-// ─── CONFIG ─────────────────────────────────────────────────────────────────
-// Replace with your OAuth Client ID from Google Cloud Console.
-// Authorized JS origins must include the URL you open this file from.
 const CLIENT_ID = '319445339245-uo0hbbedn480q253c7vftapjih5sm7v1.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
 
-// Calendar IDs to include in the report (pre-populated from session)
 const CALENDAR_CONFIG = [
   {
     id: '56478e30913e64ba91fef70adf66d7fd397ba5b13129344271fa4addd0fb5bec@group.calendar.google.com',
     label: 'Vacation Travel',
     cat: 'vacation',
     color: '#378ADD',
-    boardKeywords: null  // include ALL events
+    boardKeywords: null
   },
   {
     id: 'bharlam718@gmail.com',
     label: "Bari's Calendar",
-    cat: null,           // categorised per-event by board keyword matching
+    cat: null,
     color: null,
-    boardKeywords: true  // only board-related events
+    boardKeywords: true
   }
 ];
 
-// Board keyword → category mapping for Bari's calendar
 const BOARD_CATS = [
   { keywords: ['eastern bank','eastern trust','eastern foundation','eastern board','eastern strategic','eastern innovation','eastern nom','eastern retreat','puerto rico with eastern'], cat: 'eastern', color: '#1D9E75', label: 'Eastern Bank' },
   { keywords: ['mattress warehouse','mattress'], cat: 'mattress', color: '#D85A30', label: 'Mattress Warehouse' },
@@ -357,26 +341,59 @@ const BOARD_CATS = [
   { keywords: ['one water'], cat: 'onewater', color: '#888780', label: 'One Water Marine' },
 ];
 
-// Detect meeting mode from event object
+const STORAGE_KEY = 'vp_hidden_years';
+
+function loadHiddenYears() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch(e) { return new Set(); }
+}
+
+function saveHiddenYears(set) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])); } catch(e) {}
+}
+
+let hiddenYears = loadHiddenYears();
+
+function toggleYear(year) {
+  if (hiddenYears.has(year)) {
+    hiddenYears.delete(year);
+  } else {
+    hiddenYears.add(year);
+  }
+  saveHiddenYears(hiddenYears);
+  applyYearVisibility();
+}
+
+function applyYearVisibility() {
+  document.querySelectorAll('.year-section').forEach(section => {
+    const year = parseInt(section.dataset.year);
+    const wrap = section.querySelector('.year-months-wrap');
+    const icon = section.querySelector('.year-toggle-icon');
+    if (hiddenYears.has(year)) {
+      wrap.classList.add('collapsed');
+      if (icon) icon.textContent = '+';
+    } else {
+      wrap.classList.remove('collapsed');
+      if (icon) icon.textContent = '−';
+    }
+  });
+}
+
 function detectMode(event) {
   const loc = (event.location || '').toLowerCase();
   const desc = (event.description || '').toLowerCase();
   const summary = (event.summary || '').toLowerCase();
-
-  // In-person signals
   if (/in.?person|onsite|on.site|hybrid.*onsite|retreat|in puerto rico/i.test(loc + ' ' + desc + ' ' + summary)) return 'inperson';
   if (/\b(tba|tbd)\b/.test(loc) && !/zoom|teams|meet\.google|webex|gotomeeting/i.test(loc + desc)) return 'inperson';
   if (loc && !/zoom|teams|meet\.google|webex|gotomeeting|https?:/i.test(loc)) return 'inperson';
-
-  // Remote signals
   if (/zoom|microsoft teams|google meet|meet\.google|webex|gotomeeting|teams\.microsoft|hangouts/i.test(loc + desc)) return 'remote';
   if (event.conferenceData) return 'remote';
   if (/https?:\/\//i.test(loc)) return 'remote';
-
   return null;
 }
 
-// Match event title to board category
 function matchBoardCat(summary) {
   const s = summary.toLowerCase();
   for (const bc of BOARD_CATS) {
@@ -385,15 +402,10 @@ function matchBoardCat(summary) {
   return null;
 }
 
-// ─── AUTH ────────────────────────────────────────────────────────────────────
 let tokenClient = null;
 let accessToken = null;
 
 function signIn() {
-  if (!CLIENT_ID || CLIENT_ID === 'YOUR_GOOGLE_OAUTH_CLIENT_ID') {
-    showError('OAuth Client ID not configured', 'Open this HTML file in a text editor and replace <code>YOUR_GOOGLE_OAUTH_CLIENT_ID</code> with your Google Cloud OAuth 2.0 Client ID.<br><br>See the README comment at the bottom of this file for setup instructions.');
-    return;
-  }
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -426,7 +438,6 @@ function onSignedIn() {
   runReport();
 }
 
-// ─── REPORT ──────────────────────────────────────────────────────────────────
 function show(id) {
   ['auth-screen','status-screen','main'].forEach(s => {
     document.getElementById(s).style.display = s === id ? (id === 'main' ? 'block' : 'flex') : 'none';
@@ -476,41 +487,26 @@ async function fetchAllEvents(calendarId, timeMin, timeMax) {
 async function runReport() {
   if (!accessToken) { show('auth-screen'); return; }
   setStatus('Fetching calendar events…');
-
   try {
     const now = new Date();
-    const timeMin = new Date(now.getFullYear(), now.getMonth(), 1); // start of current month
-    const timeMax = new Date(now.getFullYear() + 2, 0, 1);          // Jan 1 two years out
-
-    // Update period label
-    const periodStr = `${timeMin.toLocaleDateString('en-US',{month:'short',year:'numeric'})} – Dec ${now.getFullYear()+1}`;
-    document.getElementById('period-label').textContent = periodStr;
-
+    const timeMin = new Date(2020, 0, 1);
+    const timeMax = new Date(now.getFullYear() + 2, 0, 1);
+    document.getElementById('period-label').textContent = `Jan 2020 – Dec ${now.getFullYear() + 1}`;
     const allEvents = [];
 
-    // Fetch vacation travel calendar (all events)
     setStatus('Fetching Vacation Travel calendar…');
     const vacEvents = await fetchAllEvents(CALENDAR_CONFIG[0].id, timeMin, timeMax);
     vacEvents.forEach(e => {
       const start = e.start?.date || e.start?.dateTime;
       const end   = e.end?.date   || e.end?.dateTime;
       if (!start) return;
-      // For all-day events, end is exclusive — back off one day
       let endDate = end ? new Date(end) : new Date(start);
       if (e.end?.date) endDate.setDate(endDate.getDate() - 1);
-      allEvents.push({
-        start: toDateStr(new Date(start)),
-        end: toDateStr(endDate),
-        title: e.summary || '(no title)',
-        cat: 'vacation',
-        color: '#378ADD',
-        mode: null
-      });
+      allEvents.push({ start: toDateStr(new Date(start)), end: toDateStr(endDate), title: e.summary || '(no title)', cat: 'vacation', color: '#378ADD', mode: null });
     });
 
-    // Fetch Bari's calendar (board events only)
     setStatus("Fetching Bari's calendar…");
-    const bariEvents = await fetchAllEvents(CALENDAR_CONFIG[1].id, timeMin, timeMax);
+    const bariEvents = await fetchAllEvents(CALENDAR_CONFIG[1].id, new Date(2025, 0, 1), timeMax);
     bariEvents.forEach(e => {
       const bc = matchBoardCat(e.summary || '');
       if (!bc) return;
@@ -519,14 +515,7 @@ async function runReport() {
       if (!start) return;
       let endDate = end ? new Date(end) : new Date(start);
       if (e.end?.date) endDate.setDate(endDate.getDate() - 1);
-      allEvents.push({
-        start: toDateStr(new Date(start)),
-        end: toDateStr(endDate),
-        title: e.summary || '(no title)',
-        cat: bc.cat,
-        color: bc.color,
-        mode: detectMode(e)
-      });
+      allEvents.push({ start: toDateStr(new Date(start)), end: toDateStr(endDate), title: e.summary || '(no title)', cat: bc.cat, color: bc.color, mode: detectMode(e) });
     });
 
     renderCalendar(allEvents, now);
@@ -535,222 +524,215 @@ async function runReport() {
     showError('Failed to load calendar data', err.message);
   }
 }
+ <script>
+const CLIENT_ID = '319445339245-uo0hbbedn480q253c7vftapjih5sm7v1.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
 
-// ─── RENDER ──────────────────────────────────────────────────────────────────
-function toDateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const CALENDAR_CONFIG = [
+  {
+    id: '56478e30913e64ba91fef70adf66d7fd397ba5b13129344271fa4addd0fb5bec@group.calendar.google.com',
+    label: 'Vacation Travel',
+    cat: 'vacation',
+    color: '#378ADD',
+    boardKeywords: null
+  },
+  {
+    id: 'bharlam718@gmail.com',
+    label: "Bari's Calendar",
+    cat: null,
+    color: null,
+    boardKeywords: true
+  }
+];
+
+const BOARD_CATS = [
+  { keywords: ['eastern bank','eastern trust','eastern foundation','eastern board','eastern strategic','eastern innovation','eastern nom','eastern retreat','puerto rico with eastern'], cat: 'eastern', color: '#1D9E75', label: 'Eastern Bank' },
+  { keywords: ['mattress warehouse','mattress'], cat: 'mattress', color: '#D85A30', label: 'Mattress Warehouse' },
+  { keywords: ['aterian','ater '], cat: 'aterian', color: '#7F77DD', label: 'Aterian' },
+  { keywords: ['flourish'], cat: 'flourish', color: '#D4537E', label: 'Flourish Care' },
+  { keywords: ['one water'], cat: 'onewater', color: '#888780', label: 'One Water Marine' },
+];
+
+const STORAGE_KEY = 'vp_hidden_years';
+
+function loadHiddenYears() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch(e) { return new Set(); }
 }
 
-function parseDate(s) {
-  const [y,m,d] = s.split('-').map(Number);
-  return new Date(y, m-1, d);
+function saveHiddenYears(set) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])); } catch(e) {}
 }
 
-function fmtRange(start, end) {
-  const s = parseDate(start), e = parseDate(end);
-  if (start === end) return s.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
-    return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}–${e.getDate()}`;
-  return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${e.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+let hiddenYears = loadHiddenYears();
+
+function toggleYear(year) {
+  if (hiddenYears.has(year)) {
+    hiddenYears.delete(year);
+  } else {
+    hiddenYears.add(year);
+  }
+  saveHiddenYears(hiddenYears);
+  applyYearVisibility();
 }
 
-function getEventsOnDay(events, dateStr) {
-  return events.filter(e => dateStr >= e.start && dateStr <= e.end);
-}
-
-function renderCalendar(events, today) {
-  const out = document.getElementById('cal-output');
-  out.innerHTML = '';
-
-  const startYear = today.getFullYear();
-  const endYear   = startYear + 1;
-  const startMonth = today.getMonth();
-
-  const DAY_NAMES = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  const todayStr = toDateStr(today);
-
-  [startYear, endYear].forEach(year => {
-    const yHead = document.createElement('div');
-    yHead.className = 'year-heading';
-    yHead.textContent = year;
-    out.appendChild(yHead);
-
-    const grid = document.createElement('div');
-    grid.className = 'months-grid';
-
-    const mStart = year === startYear ? startMonth : 0;
-    const mEnd   = 11;
-
-    for (let m = mStart; m <= mEnd; m++) {
-      const block = document.createElement('div');
-      block.className = 'month-block';
-
-      const ml = document.createElement('div');
-      ml.className = 'month-label';
-      ml.textContent = MONTH_NAMES[m];
-      block.appendChild(ml);
-
-      const hdr = document.createElement('div');
-      hdr.className = 'day-header-row';
-      DAY_NAMES.forEach(n => {
-        const dn = document.createElement('div');
-        dn.className = 'day-name';
-        dn.textContent = n;
-        hdr.appendChild(dn);
-      });
-      block.appendChild(hdr);
-
-      const daysInMonth = new Date(year, m+1, 0).getDate();
-      const startDow    = new Date(year, m, 1).getDay();
-
-      let week = newWeekRow();
-      for (let i = 0; i < startDow; i++) week.appendChild(emptyCell());
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const dow = new Date(year, m, d).getDay();
-        const dayEvts = getEventsOnDay(events, dateStr);
-
-        const cell = document.createElement('div');
-        cell.className = 'day-cell' + (dateStr === todayStr ? ' today' : '') + (dayEvts.length ? ' has-events' : '');
-
-        const dn = document.createElement('div');
-        dn.className = 'day-num';
-        dn.textContent = d;
-        cell.appendChild(dn);
-
-        if (dayEvts.length) {
-          const bars = document.createElement('div');
-          bars.className = 'bars-area';
-          const shown = Math.min(dayEvts.length, 3);
-          for (let i = shown-1; i >= 0; i--) {
-            const bar = document.createElement('div');
-            bar.className = 'event-bar';
-            bar.style.background = dayEvts[i].color;
-            bars.appendChild(bar);
-          }
-          cell.appendChild(bars);
-          cell.addEventListener('mouseenter', e => showTip(e, dayEvts));
-          cell.addEventListener('mouseleave', () => { document.getElementById('tt').style.display='none'; });
-        }
-
-        week.appendChild(cell);
-
-        if (dow === 6 || d === daysInMonth) {
-          if (d === daysInMonth && dow < 6) {
-            for (let p = dow+1; p <= 6; p++) week.appendChild(emptyCell());
-          }
-          block.appendChild(week);
-          if (d < daysInMonth) week = newWeekRow();
-        }
-      }
-
-      grid.appendChild(block);
+function applyYearVisibility() {
+  document.querySelectorAll('.year-section').forEach(section => {
+    const year = parseInt(section.dataset.year);
+    const wrap = section.querySelector('.year-months-wrap');
+    const icon = section.querySelector('.year-toggle-icon');
+    if (hiddenYears.has(year)) {
+      wrap.classList.add('collapsed');
+      if (icon) icon.textContent = '+';
+    } else {
+      wrap.classList.remove('collapsed');
+      if (icon) icon.textContent = '−';
     }
-    out.appendChild(grid);
   });
 }
 
-function newWeekRow() {
-  const w = document.createElement('div');
-  w.className = 'week-row';
-  return w;
-}
-function emptyCell() {
-  const c = document.createElement('div');
-  c.className = 'day-cell empty';
-  return c;
+function detectMode(event) {
+  const loc = (event.location || '').toLowerCase();
+  const desc = (event.description || '').toLowerCase();
+  const summary = (event.summary || '').toLowerCase();
+  if (/in.?person|onsite|on.site|hybrid.*onsite|retreat|in puerto rico/i.test(loc + ' ' + desc + ' ' + summary)) return 'inperson';
+  if (/\b(tba|tbd)\b/.test(loc) && !/zoom|teams|meet\.google|webex|gotomeeting/i.test(loc + desc)) return 'inperson';
+  if (loc && !/zoom|teams|meet\.google|webex|gotomeeting|https?:/i.test(loc)) return 'inperson';
+  if (/zoom|microsoft teams|google meet|meet\.google|webex|gotomeeting|teams\.microsoft|hangouts/i.test(loc + desc)) return 'remote';
+  if (event.conferenceData) return 'remote';
+  if (/https?:\/\//i.test(loc)) return 'remote';
+  return null;
 }
 
-// ─── TOOLTIP ─────────────────────────────────────────────────────────────────
-const CAT_LABELS = {
-  vacation:'Vacation / Travel', eastern:'Eastern Bank',
-  mattress:'Mattress Warehouse', aterian:'Aterian',
-  flourish:'Flourish Care', onewater:'One Water Marine'
-};
+function matchBoardCat(summary) {
+  const s = summary.toLowerCase();
+  for (const bc of BOARD_CATS) {
+    if (bc.keywords.some(k => s.includes(k))) return bc;
+  }
+  return null;
+}
 
-function showTip(e, dayEvts) {
-  const tt = document.getElementById('tt');
-  // Deduplicate by title+start (multi-day events repeat per day)
-  const seen = new Set();
-  const unique = dayEvts.filter(ev => {
-    const key = ev.title + ev.start;
-    if (seen.has(key)) return false;
-    seen.add(key); return true;
+let tokenClient = null;
+let accessToken = null;
+
+function signIn() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { showError('Sign-in failed', resp.error); return; }
+      accessToken = resp.access_token;
+      onSignedIn();
+    }
   });
+  tokenClient.requestAccessToken();
+}
 
-  tt.innerHTML = unique.map(ev => {
-    const modeBadge = ev.mode === 'inperson'
-      ? '<span class="badge badge-inperson">in person</span>'
-      : ev.mode === 'remote'
-      ? '<span class="badge badge-remote">remote</span>'
-      : '';
-    return `<div class="tt-event">
-      <div class="tt-dot" style="background:${ev.color}"></div>
-      <div class="tt-body">
-        <div class="tt-name">${ev.title}</div>
-        <div class="tt-sub">${CAT_LABELS[ev.cat] || ev.cat} · ${fmtRange(ev.start,ev.end)} ${modeBadge}</div>
-      </div>
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
+  show('auth-screen');
+  document.getElementById('btn-signin').style.display = '';
+  document.getElementById('btn-signout').style.display = 'none';
+  document.getElementById('btn-refresh').style.display = 'none';
+  document.getElementById('btn-print').style.display = 'none';
+  document.getElementById('config-bar').style.display = 'none';
+  document.getElementById('main').style.display = 'none';
+}
+
+function onSignedIn() {
+  document.getElementById('btn-signin').style.display = 'none';
+  document.getElementById('btn-signout').style.display = '';
+  document.getElementById('btn-refresh').style.display = '';
+  document.getElementById('btn-print').style.display = '';
+  runReport();
+}
+
+function show(id) {
+  ['auth-screen','status-screen','main'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? (id === 'main' ? 'block' : 'flex') : 'none';
+  });
+  if (id === 'main') { document.getElementById('config-bar').style.display = 'flex'; }
+}
+
+function setStatus(msg) {
+  show('status-screen');
+  document.getElementById('status-msg').textContent = msg;
+}
+
+function showError(title, detail) {
+  show('status-screen');
+  document.getElementById('status-screen').innerHTML = `
+    <div class="error-card" style="max-width:500px;">
+      <strong>${title}</strong>
+      <div style="font-size:13px;color:#A32D2D;margin-top:4px;">${detail}</div>
+      <button class="btn" onclick="show('auth-screen')" style="margin-top:14px;font-size:12px;">← Back</button>
     </div>`;
-  }).join('');
-
-  tt.style.display = 'block';
-  positionTip(e);
 }
 
-function positionTip(e) {
-  const tt = document.getElementById('tt');
-  const x = e.clientX + 14;
-  const y = e.clientY - tt.offsetHeight / 2;
-  tt.style.left = Math.min(x, window.innerWidth - 280) + 'px';
-  tt.style.top  = Math.max(8, Math.min(y, window.innerHeight - tt.offsetHeight - 8)) + 'px';
+async function fetchAllEvents(calendarId, timeMin, timeMax) {
+  let all = [], pageToken = null;
+  do {
+    const params = new URLSearchParams({
+      calendarId,
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '500',
+      ...(pageToken ? { pageToken } : {})
+    });
+    const resp = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!resp.ok) throw new Error(`Calendar API error ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    all = all.concat(data.items || []);
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+  return all;
 }
-document.addEventListener('mousemove', e => {
-  const tt = document.getElementById('tt');
-  if (tt.style.display !== 'none') positionTip(e);
-});
-</script>
 
-<!--
-════════════════════════════════════════════════════════════════
-  SETUP INSTRUCTIONS
-════════════════════════════════════════════════════════════════
+async function runReport() {
+  if (!accessToken) { show('auth-screen'); return; }
+  setStatus('Fetching calendar events…');
+  try {
+    const now = new Date();
+    const timeMin = new Date(2020, 0, 1);
+    const timeMax = new Date(now.getFullYear() + 2, 0, 1);
+    document.getElementById('period-label').textContent = `Jan 2020 – Dec ${now.getFullYear() + 1}`;
+    const allEvents = [];
 
-  This app runs entirely in your browser. To use it you need
-  a Google OAuth 2.0 Client ID. Here's how to get one (5 min):
+    setStatus('Fetching Vacation Travel calendar…');
+    const vacEvents = await fetchAllEvents(CALENDAR_CONFIG[0].id, timeMin, timeMax);
+    vacEvents.forEach(e => {
+      const start = e.start?.date || e.start?.dateTime;
+      const end   = e.end?.date   || e.end?.dateTime;
+      if (!start) return;
+      let endDate = end ? new Date(end) : new Date(start);
+      if (e.end?.date) endDate.setDate(endDate.getDate() - 1);
+      allEvents.push({ start: toDateStr(new Date(start)), end: toDateStr(endDate), title: e.summary || '(no title)', cat: 'vacation', color: '#378ADD', mode: null });
+    });
 
-  1. Go to https://console.cloud.google.com/
-  2. Create a new project (or use an existing one)
-  3. Enable the "Google Calendar API":
-       APIs & Services → Enable APIs → search "Google Calendar API"
-  4. Create an OAuth 2.0 credential:
-       APIs & Services → Credentials → Create Credentials
-       → OAuth client ID → Web application
-  5. Under "Authorized JavaScript origins" add:
-       • http://localhost  (if running locally)
-       • file://           (if opening directly from disk — note:
-                           some browsers block this; use localhost)
-       • Your actual domain if hosting online
-  6. Copy the Client ID (looks like 123456789-abc...apps.googleusercontent.com)
-  7. In this file, replace  YOUR_GOOGLE_OAUTH_CLIENT_ID  with it
+    setStatus("Fetching Bari's calendar…");
+    const bariEvents = await fetchAllEvents(CALENDAR_CONFIG[1].id, new Date(2025, 0, 1), timeMax);
+    bariEvents.forEach(e => {
+      const bc = matchBoardCat(e.summary || '');
+      if (!bc) return;
+      const start = e.start?.date || e.start?.dateTime;
+      const end   = e.end?.date   || e.end?.dateTime;
+      if (!start) return;
+      let endDate = end ? new Date(end) : new Date(start);
+      if (e.end?.date) endDate.setDate(endDate.getDate() - 1);
+      allEvents.push({ start: toDateStr(new Date(start)), end: toDateStr(endDate), title: e.summary || '(no title)', cat: bc.cat, color: bc.color, mode: detectMode(e) });
+    });
 
-  To run locally without a web server, open in Chrome with:
-    chrome --allow-file-access-from-files calendar-report.html
-
-  Or serve with Python:
-    python3 -m http.server 8080
-    then open  http://localhost:8080/calendar-report.html
-
-  BOARD KEYWORD MATCHING
-  ──────────────────────
-  The app identifies Bari's board meetings by matching event
-  titles against keyword lists in BOARD_CATS at the top of
-  the script. Add or edit keywords there if meetings aren't
-  being picked up (e.g. if a new board is added later).
-
-════════════════════════════════════════════════════════════════
--->
-</body>
-</html>
+    renderCalendar(allEvents, now);
+    show('main');
+  } catch(err) {
+    showError('Failed to load calendar data', err.message);
+  }
+}
