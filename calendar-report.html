@@ -639,7 +639,7 @@ function renderCalendar(events, today) {
   const todayStr = toDateStr(today);
   const currentYear = today.getFullYear();
 
-  for (let year = endYear; year >= startYear; year--) {
+  for (let year = startYear; year <= endYear; year++) {
     const section = document.createElement('div');
     section.className = 'year-section';
     section.dataset.year = year;
