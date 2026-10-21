@@ -536,16 +536,39 @@ async function runReport() {
   try {
     const now = new Date();
     const timeMin = new Date(2020, 0, 1);                    // Jan 1 2020
-    const timeMax = new Date(now.getFullYear() + 2, 0, 1);   // Jan 1 two years out
 
-    const periodStr = `Jan 2020 – Dec ${now.getFullYear() + 1}`;
-    document.getElementById('period-label').textContent = periodStr;
+    // Dynamic end: scan 2 years beyond current year first, then extend based on vacation entries found
+    let scanEndYear = now.getFullYear() + 2;
+    let timeMax = new Date(scanEndYear, 0, 1);
 
     const allEvents = [];
 
-    // Fetch vacation travel calendar (all events, full range)
+    // Fetch vacation travel calendar — first pass with generous window
     setStatus('Fetching Vacation Travel calendar…');
-    const vacEvents = await fetchAllEvents(CALENDAR_CONFIG[0].id, timeMin, timeMax);
+    let vacEvents = await fetchAllEvents(CALENDAR_CONFIG[0].id, timeMin, timeMax);
+
+    // Find the latest year with a vacation entry
+    let latestVacYear = now.getFullYear();
+    vacEvents.forEach(e => {
+      const start = e.start?.date || e.start?.dateTime;
+      if (start) {
+        const yr = parseInt(start.split('-')[0]);
+        if (yr > latestVacYear) latestVacYear = yr;
+      }
+    });
+
+    // If vacations extend beyond our initial scan window, re-fetch with extended window
+    // Display through latestVacYear + 1; scan through latestVacYear + 2 to detect future entries
+    const displayEndYear = latestVacYear + 1;
+    if (displayEndYear + 1 > scanEndYear) {
+      scanEndYear = displayEndYear + 1;
+      timeMax = new Date(scanEndYear, 0, 1);
+      setStatus('Fetching extended calendar range…');
+      vacEvents = await fetchAllEvents(CALENDAR_CONFIG[0].id, timeMin, timeMax);
+    }
+
+    const periodStr = `Jan 2020 – Dec ${displayEndYear}`;
+    document.getElementById('period-label').textContent = periodStr;
     vacEvents.forEach(e => {
       const start = e.start?.date || e.start?.dateTime;
       const end   = e.end?.date   || e.end?.dateTime;
@@ -631,7 +654,15 @@ function renderCalendar(events, today) {
   out.innerHTML = '';
 
   const startYear = 2020;
-  const endYear   = today.getFullYear() + 1;
+  // Dynamic end: latest year with a vacation entry + 1 (so the next year always shows ready)
+  let latestEvtYear = today.getFullYear();
+  events.forEach(e => {
+    if (e.cat === 'vacation') {
+      const yr = parseInt(e.start.split('-')[0]);
+      if (yr > latestEvtYear) latestEvtYear = yr;
+    }
+  });
+  const endYear = latestEvtYear + 1;
 
   const DAY_NAMES = ['Su','Mo','Tu','We','Th','Fr','Sa'];
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
