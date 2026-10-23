@@ -163,6 +163,52 @@
     opacity: 0;
   }
 
+  /* ── Archive block ── */
+  .archive-section { }
+  .archive-heading {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-top: 16px;
+    border: 0.5px solid var(--border-med);
+    border-bottom: 0.5px solid var(--border-med) !important;
+  }
+  .archive-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-2);
+  }
+  .archive-years {
+    font-size: 10px; color: var(--text-3); font-weight: 400;
+    letter-spacing: 0; text-transform: none; margin-left: 4px;
+  }
+  .archive-wrap { overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease; max-height: 3000px; opacity: 1; }
+  .archive-wrap.collapsed { max-height: 0; opacity: 0; }
+  .archive-inner { padding: 8px 0 4px; display: flex; flex-direction: column; gap: 0; }
+  .archive-year-row {
+    display: flex; align-items: flex-start; gap: 20px;
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .archive-year-row:last-child { border-bottom: none; }
+  .archive-year-label {
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    min-width: 36px; padding-top: 2px;
+  }
+  .archive-trips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .archive-no-trips { font-size: 12px; color: var(--text-3); font-style: italic; padding-top: 2px; }
+  .archive-trip-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 0.5px solid var(--border-med);
+    border-radius: 20px; padding: 3px 10px 3px 7px;
+    font-size: 12px; color: var(--text);
+  }
+  .archive-chip-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .archive-chip-title { font-weight: 500; }
+  .archive-chip-date { color: var(--text-3); margin-left: 3px; font-size: 11px; }
+
   .months-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -407,6 +453,7 @@ function toggleYear(year) {
 
 function applyYearVisibility() {
   document.querySelectorAll('.year-section').forEach(section => {
+    if (section.classList.contains('archive-section')) return; // archive has its own toggle
     const year = parseInt(section.dataset.year);
     const wrap = section.querySelector('.year-months-wrap');
     const icon = section.querySelector('.year-toggle-icon');
@@ -670,7 +717,111 @@ function renderCalendar(events, today) {
   const todayStr = toDateStr(today);
   const currentYear = today.getFullYear();
 
-  for (let year = startYear; year <= endYear; year++) {
+  // Archive = all years strictly before current year
+  const archiveEndYear = currentYear - 1;
+
+  // ── ARCHIVE BLOCK ─────────────────────────────────────────────────────────
+  if (archiveEndYear >= startYear) {
+    const archiveSection = document.createElement('div');
+    archiveSection.className = 'year-section archive-section';
+    archiveSection.dataset.year = 'archive';
+
+    // Count total archive vacation events
+    let archiveTripCount = 0;
+    const seenArchive = new Set();
+    events.forEach(e => {
+      if (e.cat !== 'vacation') return;
+      const yr = parseInt(e.start.split('-')[0]);
+      if (yr >= startYear && yr <= archiveEndYear) {
+        const key = e.title + e.start;
+        if (!seenArchive.has(key)) { seenArchive.add(key); archiveTripCount++; }
+      }
+    });
+
+    const archiveHead = document.createElement('div');
+    archiveHead.className = 'year-heading archive-heading';
+    archiveHead.innerHTML = `
+      <div class="year-heading-left">
+        <em class="year-toggle-icon archive-toggle-icon">+</em>
+        <span class="archive-label">Archive</span>
+        <span class="archive-years">${startYear}–${archiveEndYear}</span>
+      </div>
+      <span class="year-event-count">${archiveTripCount} trip${archiveTripCount !== 1 ? 's' : ''}</span>`;
+    archiveHead.addEventListener('click', () => {
+      const wrap = archiveSection.querySelector('.archive-wrap');
+      const icon = archiveSection.querySelector('.archive-toggle-icon');
+      const isCollapsed = wrap.classList.contains('collapsed');
+      wrap.classList.toggle('collapsed', !isCollapsed);
+      icon.textContent = isCollapsed ? '−' : '+';
+      try { localStorage.setItem('vp_archive_open', isCollapsed ? '1' : '0'); } catch(e){}
+    });
+    archiveSection.appendChild(archiveHead);
+
+    const archiveWrap = document.createElement('div');
+    archiveWrap.className = 'year-months-wrap archive-wrap';
+
+    // Build per-year trip lists inside the archive
+    const archiveInner = document.createElement('div');
+    archiveInner.className = 'archive-inner';
+
+    for (let yr = startYear; yr <= archiveEndYear; yr++) {
+      // Collect unique vacation events for this year
+      const seenYr = new Set();
+      const yrEvts = [];
+      events.forEach(e => {
+        if (e.cat !== 'vacation') return;
+        const ey = parseInt(e.start.split('-')[0]);
+        const key = e.title + e.start;
+        if (ey === yr && !seenYr.has(key)) { seenYr.add(key); yrEvts.push(e); }
+      });
+      yrEvts.sort((a,b) => a.start.localeCompare(b.start));
+
+      const yrRow = document.createElement('div');
+      yrRow.className = 'archive-year-row';
+
+      const yrLabel = document.createElement('div');
+      yrLabel.className = 'archive-year-label';
+      yrLabel.textContent = yr;
+      yrRow.appendChild(yrLabel);
+
+      const yrTrips = document.createElement('div');
+      yrTrips.className = 'archive-trips';
+
+      if (yrEvts.length === 0) {
+        const none = document.createElement('span');
+        none.className = 'archive-no-trips';
+        none.textContent = 'No trips recorded';
+        yrTrips.appendChild(none);
+      } else {
+        yrEvts.forEach(ev => {
+          const chip = document.createElement('span');
+          chip.className = 'archive-trip-chip';
+          const dateRange = fmtRange(ev.start, ev.end);
+          chip.innerHTML = `<span class="archive-chip-dot" style="background:${ev.color}"></span><span class="archive-chip-title">${ev.title}</span><span class="archive-chip-date">${dateRange}</span>`;
+          yrTrips.appendChild(chip);
+        });
+      }
+
+      yrRow.appendChild(yrTrips);
+      archiveInner.appendChild(yrRow);
+    }
+
+    archiveWrap.appendChild(archiveInner);
+    archiveSection.appendChild(archiveWrap);
+    out.appendChild(archiveSection);
+
+    // Archive starts collapsed; restore saved state
+    let archiveOpen = false;
+    try { archiveOpen = localStorage.getItem('vp_archive_open') === '1'; } catch(e){}
+    if (!archiveOpen) {
+      archiveWrap.classList.add('collapsed');
+    } else {
+      archiveSection.querySelector('.archive-toggle-icon').textContent = '−';
+    }
+  }
+
+  // ── PER-YEAR CALENDAR BLOCKS (current year onward) ─────────────────────────
+  for (let year = currentYear; year <= endYear; year++) {
     const section = document.createElement('div');
     section.className = 'year-section';
     section.dataset.year = year;
@@ -695,10 +846,7 @@ function renderCalendar(events, today) {
     const grid = document.createElement('div');
     grid.className = 'months-grid';
 
-    const mStart = 0;
-    const mEnd   = (year === today.getFullYear() + 1) ? 11 : 11;
-
-    for (let m = mStart; m <= mEnd; m++) {
+    for (let m = 0; m <= 11; m++) {
       const block = document.createElement('div');
       block.className = 'month-block';
 
@@ -770,20 +918,8 @@ function renderCalendar(events, today) {
     out.appendChild(section);
   }
 
-  // Apply saved show/hide state; default: collapse years before current-1
-  // (so current year and next year start open, older years start collapsed)
-  const defaultCollapse = year => year < currentYear - 1;
-  for (let year = endYear; year >= startYear; year--) {
-    if (!hiddenYears.has(year) && defaultCollapse(year)) {
-      // Only auto-collapse on first load (when localStorage has no entry for this year)
-      // We check: if hiddenYears was empty (fresh load), apply defaults
-    }
-  }
-  // On fresh load (no saved prefs), collapse years before current-1
+  // Apply saved show/hide state for non-archive years
   if (loadHiddenYears().size === 0) {
-    for (let year = startYear; year < currentYear - 1; year++) {
-      hiddenYears.add(year);
-    }
     saveHiddenYears(hiddenYears);
   }
   applyYearVisibility();
